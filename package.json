@@ -8,8 +8,12 @@
     "@testing-library/user-event": "^13.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-player": "^2.11.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "sockjs-client": "^1.6.1",
+    "styled-components": "^5.3.6",
+    "web-vitals": "^2.1.4",
+    "webstomp-client": "^1.2.6"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -34,5 +38,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "proxy": "http://3.34.161.56:9092"
 }

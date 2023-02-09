@@ -113,7 +113,6 @@ class Player extends Component
                 }
             }
         }
-        messageOn = false;
     }
 
     sync = (state) => {

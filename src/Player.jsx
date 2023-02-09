@@ -15,14 +15,8 @@ const PlayerWrapper = styled.div`
   }
 `;
 
-// var data = {};//전송 데이터(JSON)
-// var sockJs;
-// var stomp;
 var isHost = false;
 var ref = React.createRef();
-var clientControl = false;
-var messageOn = false;
-var isClientOn = false;
 
 var stompClient = null;
 
@@ -47,11 +41,9 @@ class Player extends Component
 
     getData = (id) => {
         try {
-          //응답 성공
           const response = axios.post("http://3.34.161.56:8084/room/create/"+id);
           console.log(response);
         } catch (error) {
-          //응답 실패
           console.error(error);
         }
     }
@@ -63,7 +55,6 @@ class Player extends Component
     }
 
     onConnected = () => {
-        // Subscribe to the Public Topic
         stompClient.subscribe('/topic/group', this.onMessageReceived);
     }
 
@@ -126,7 +117,6 @@ class Player extends Component
     }
 
     sync = (state) => {
-        // this.send("URL",this.state.url);
         this.sendMessage("Control:sync",ref.current.getCurrentTime());
     }
 

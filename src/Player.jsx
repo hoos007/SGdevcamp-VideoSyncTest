@@ -3,6 +3,7 @@ import ReactPlayer from 'react-player'
 import styled from 'styled-components'
 import SockJS from 'sockjs-client';
 import webstomp from 'webstomp-client';
+import axios from 'axios';
 
 const PlayerWrapper = styled.div`
   position: relative;
@@ -14,11 +15,14 @@ const PlayerWrapper = styled.div`
   }
 `;
 
-var data = {};//전송 데이터(JSON)
-var sockJs;
-var stomp;
+// var data = {};//전송 데이터(JSON)
+// var sockJs;
+// var stomp;
 var isHost = false;
 var ref = React.createRef();
+var clientControl = false;
+var messageOn = false;
+var isClientOn = false;
 
 var stompClient = null;
 
@@ -37,15 +41,19 @@ class Player extends Component
         duration: 0,
         playbackRate: 1.0,
         loop: false,
-        progressInterval: 1000
+        progressInterval: 1000,
+        style: { pointerEvents: 'none' }
     }
 
-    setTime(time){
-        if(Math.abs(ref.current.getCurrentTime() - time) > 0.250)
-        {
-            ref.current.seekTo(time);
+    getData = (id) => {
+        try {
+          //응답 성공
+          const response = axios.post("http://3.34.161.56:8084/room/create/"+id);
+          console.log(response);
+        } catch (error) {
+          //응답 실패
+          console.error(error);
         }
-        
     }
 
     connect = () => {
@@ -72,11 +80,8 @@ class Player extends Component
             };
 
             httpRequest.open('POST', 'http://3.34.161.56:8084/kafka/publish', true);
-            /* Response Type을 Json으로 사전 정의 */
             httpRequest.responseType = "json";
-            /* 요청 Header에 컨텐츠 타입은 Json으로 사전 정의 */
             httpRequest.setRequestHeader('Content-Type', 'application/json');
-            /* 정의된 서버에 Json 형식의 요청 Data를 포함하여 요청을 전송 */
             httpRequest.send(JSON.stringify(chatMessage));
         }
         console.log(chatMessage);
@@ -87,13 +92,7 @@ class Player extends Component
 
         console.log(message);
     
-        if(message.type === 'JOIN') {
-            console.log('event-message');
-            console.log(message.author + ' joined!');
-        } else if (message.type === 'LEAVE') {
-            console.log('event-message');
-            console.log(message.author + ' left!');
-        } else {
+        if(message.type === 'CHAT')  {
             if(message.author === "sys:host")
             {
                 console.log(message.content);
@@ -109,7 +108,10 @@ class Player extends Component
             }
             else if(message.author === "Control:play")
             {
-                this.setState({playing: !this.state.playing});
+                if(!isHost)
+                {
+                    this.setState({playing: !this.state.playing});
+                }
             }
             else if(message.author === "Control:sync")
             {
@@ -120,105 +122,39 @@ class Player extends Component
                 }
             }
         }
+        messageOn = false;
     }
-
-    // btnLogin = (e) => {
-    //     sockJs = new SockJS("http://3.34.161.56:9092/my-chat");
-
-    //     stomp = webstomp.over(sockJs);
-
-    //     stomp.connect({}, function (){
-    //         console.log("STOMP Connection");
-    //         setTimeout(function() {stomp.subscribe("/topic/group", function (msg) {
-    //             var data = JSON.parse(msg.data)
-    //             if(data.type === "sys:host")
-    //             {
-    //                 console.log(data.msg);
-    //                 isHost = true;
-    //                 this.setState({controls: true});
-    //             }
-    //             else if(data.type === "URL")
-    //             {
-    //                 if(this.state.url !== data.msg)
-    //                 {
-    //                     this.setState({url: data.msg});
-    //                 }
-    //             }
-    //             else if(data.type === "Control:play")
-    //             {
-    //                 this.setState({playing: !this.state.playing});
-    //             }
-    //             else if(data.type === "Control:sync")
-    //             {
-    //                 if(!isHost)
-    //                 {
-    //                     console.log(Number(data.msg));
-    //                     this.setTime(Number(data.msg));
-    //                 }
-    //             }
-    //         });},500);
-    //     });
-        
-        
-
-    // }
-    
-    // btnSend = (type,msg,e) => {
-    //     this.send(type,msg);
-    // }
-    
-    // send(type, msg){
-    //     if(msg.toString().trim() !== ''){
-    //         data.type = type;
-    //         data.msg = msg;
-    //         var temp = JSON.stringify(data);
-    //         stomp.send('/kafka/sendMessage', {}, temp)
-    //     }
-    // }
-
-    // onChangeUrl(e){
-    //     setVideoURL(e.target.value);
-    // }
-
-    // setboolean(bool){
-    //     setbool(!bool)
-    // }
-
-    // handleProgress = (state) => {
-    //     console.log('onProgress',state);
-    // }
-
-    // endbufferhandler = (state) => {
-    //     ref.current.seekTo(50,"seconds");
-    // }
-
-    // startbuffer = (stete) =>
-    // {
-    //     this.send("loading:start",1);
-    // }
-
-    // endBuffer = (state) =>
-    // {
-    //     this.send("loading:end",1);
-    // }
 
     sync = (state) => {
         // this.send("URL",this.state.url);
-        this.send("Control:sync",ref.current.getCurrentTime());
+        this.sendMessage("Control:sync",ref.current.getCurrentTime());
+    }
+
+    setTime = (time) => {
+        if(Math.abs(ref.current.getCurrentTime() - time) > 0.250)
+        {
+            ref.current.seekTo(time);
+        }
+        
     }
 
     render(){
-        const { url, playing, controls, light, volume, muted, loop, played, loaded, duration, playbackRate, pip, progressInterval } = this.state
+        const { url, playing, controls, light, volume, muted, loop, played, loaded, duration, playbackRate, pip, progressInterval, style } = this.state
         
         return(
             <>
-                <button onClick={this.connect}>로그인</button>
-                <input type="text" id='type' ref={input => { this.urlInput = input }}/>
                 <button onClick={(e)=>{
-                    this.sendMessage("URL",this.urlInput.value);
+                    isHost = true;
+                    this.setState({controls: true});
+                    this.setState({style: {}})
+                }}>호스트설정</button>
+                <br/>
+                <button onClick={this.connect}>로그인</button>
+                <input type="text" id='type' ref={input => { this.urlInput02 = input }}/>
+                <button onClick={(e)=>{
+                    this.sendMessage("URL",this.urlInput02.value);
                 }}>url</button>
                 <button onClick={(e)=>{this.sendMessage("Control:play",playing.toString())}}>play</button>
-                <button onClick={(e)=>{this.sendMessage("Control:time",10)}}>1:00</button>
                 <PlayerWrapper>
                     <ReactPlayer
                         ref={ref}
@@ -230,11 +166,18 @@ class Player extends Component
                         muted={muted}
                         playing={playing}
                         progressInterval={progressInterval}
+                        style={style}
                         onProgress={() => {if(isHost) {this.sync();}}}
-                        // onBuffer={() => {console.log("onBuffer")}}
-                        // onBufferEnd={() => {console.log("onBufferEnd")}}
-                        // onPlay={() => {if(isHost) {this.sync();}}}
-                        // onPause={(e)=>{this.btnSend("Control:play",true,e)}}
+                        onPause={(e)=>{
+                            if(isHost){
+                                this.sendMessage("Control:play","true");
+                            }
+                        }}
+                        onPlay={(e)=>{
+                            if(isHost){
+                                this.sendMessage("Control:play","false");
+                            }
+                        }}
                         />
                 </PlayerWrapper>
             </>

@@ -144,7 +144,6 @@ class Player extends Component
                 <button onClick={(e)=>{
                     this.sendMessage("URL",this.urlInput02.value);
                 }}>url</button>
-                <button onClick={(e)=>{this.sendMessage("Control:play",playing.toString())}}>play</button>
                 <PlayerWrapper>
                     <ReactPlayer
                         ref={ref}
